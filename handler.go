@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/Shopify/sarama"
@@ -38,12 +37,11 @@ type TeleportMessage struct {
 // looks for topic's token in redis;
 // If token is valid, sends it to the kafka topic asynchronously.
 func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
-
-	body, err := ioutil.ReadAll(r.Body)
+	body, ioErr := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if ioErr != nil {
+		http.Error(w, ioErr.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -55,12 +53,15 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if token, err := c.redisClient.Get(msg.Topic).Result(); err != nil {
+	token, redisErr := c.redisClient.Get(msg.Topic).Result()
+	if redisErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Fatal(err)
-	} else if err == redis.Nil {
+		fmt.Printf("%v", redisErr)
+		return
+	} else if redisErr == redis.Nil {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Printf("topic %s does not exist (redis token is required)\n", msg.Topic)
+		return
 	} else if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Printf("token \"%s\" is invalid for topic \"%s\"\n", msg.Token, msg.Topic)
