@@ -2,5 +2,5 @@
 github.com
 golang.org
 gopkg.in
-teleport*
+teleport-*
 vet.report
