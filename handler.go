@@ -60,7 +60,7 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if redisErr == redis.Nil {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Printf("topic %s does not exist (redis token is required)\n", msg.Topic)
+		fmt.Printf("Topic %s does not exist (redis token is required)\n", msg.Topic)
 		return
 	} else if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
