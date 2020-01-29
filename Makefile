@@ -26,7 +26,7 @@ link:
 	if [ "$${BUILD_DIR_LINK}" != "$${CURRENT_DIR}" ]; then \
 	    echo "Fixing symlinks for build"; \
 	    rm -f $${BUILD_DIR}; \
-	    ln -s $${CURRENT_DIR} $${BUILD_DIR}; \
+	    sudo ln -s $${CURRENT_DIR} $${BUILD_DIR}; \
 	fi
 
 linux: 
