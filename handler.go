@@ -39,7 +39,8 @@ func (c *Controller) ProcessResponse() {
 	for {
 		select {
 		case result := <-c.kafkaProducer.Successes():
-			log.Printf("%v message: \"%s\" was sent to topic %s partition %d at offset %d\n", result.Timestamp.Format(""), result.Value, result.Topic, result.Partition, result.Offset)
+			log.Printf("%v key: %s value: %s topic: %s partition: %d offset: %d\n",
+				result.Timestamp.Format(""), result.Key, result.Value, result.Topic, result.Partition, result.Offset)
 		case err := <-c.kafkaProducer.Errors():
 			log.Printf("%v Failed to produce message", err)
 		}
@@ -79,6 +80,10 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.kafkaProducer.Input() <- &sarama.ProducerMessage{Topic: msg.Topic, Key: nil, Value: sarama.StringEncoder(body)}
+	c.kafkaProducer.Input() <- &sarama.ProducerMessage{
+		Topic: msg.Topic,
+		Key:   sarama.StringEncoder(msg.Topic),
+		Value: sarama.StringEncoder(body)}
+
 	w.WriteHeader(http.StatusOK)
 }
