@@ -23,7 +23,7 @@ type TeleportMessage struct {
 	Data      string `json:"data"`
 	User      string `json:"user"`
 	Index     string `json:"index"`
-	Parts     int    `json:"parts"`
+	Parts     string `json:"parts"`
 	ID        string `json:"id"`
 	Topic     string `json:"metadata1"`
 	Token     string `json:"metadata2"`
