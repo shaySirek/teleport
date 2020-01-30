@@ -1,59 +1,70 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/Shopify/sarama"
 	"github.com/go-redis/redis"
+	"github.com/spf13/viper"
 )
 
 const (
-	envKafkaBrokers          = "KAFKA_BROKERS"
-	envKafkaBrokersDelimiter = ","
-	envRedisServer           = "REDIS_SERVER"
-	envHTTPURI               = "HTTP_SERVER_URI"
-	envHTTPPath              = "HTTP_SERVER_PATH"
+	configPrefix                = "teleport"
+	configKafkaBrokers          = "kafka_brokers"
+	configKafkaBrokersDelimiter = ","
+	configRedisServer           = "redis_server"
+	configRedisPassword         = "redis_password"
+	configRedisDataBase         = "redis_db"
+	configHTTPURI               = "http_server_uri"
+	configHTTPPath              = "http_server_path"
 )
 
 func main() {
+
+	viper.SetDefault(configRedisPassword, "")
+	viper.SetDefault(configRedisDataBase, 0)
+
+	viper.SetEnvPrefix(configPrefix)
+	viper.AutomaticEnv()
+	viper.GetViper().AllowEmptyEnv(true)
+
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 	config.Producer.Return.Errors = true
-	brokers := strings.Split(os.Getenv(envKafkaBrokers), envKafkaBrokersDelimiter)
 
-	kafkaProducer, kafkaErr :=
-		sarama.NewAsyncProducer(brokers, config)
+	brokers := strings.Split(viper.Get(configKafkaBrokers).(string), configKafkaBrokersDelimiter)
+
+	kafkaProducer, kafkaErr := sarama.NewAsyncProducer(brokers, config)
 	if kafkaErr != nil {
 		panic(kafkaErr)
 	}
 	defer kafkaProducer.AsyncClose()
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv(envRedisServer),
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:     viper.Get(configRedisServer).(string),
+		Password: viper.Get(configRedisPassword).(string),
+		DB:       viper.Get(configRedisDataBase).(int),
 	})
 
 	pong, redisErr := redisClient.Ping().Result()
 	if redisErr != nil {
 		panic(redisErr)
 	}
-	fmt.Printf("redis: %s\n", pong)
+	log.Printf("redis: %s\n", pong)
 	defer redisClient.Close()
 
 	c := Controller{kafkaProducer, redisClient}
 
-	httpURI := os.Getenv(envHTTPURI)
-	httpPath := os.Getenv(envHTTPPath)
+	httpURI := viper.Get(configHTTPURI).(string)
+	httpPath := viper.Get(configHTTPPath).(string)
 
 	http.HandleFunc(httpPath, c.Handler)
 
-	go ProcessResponse(kafkaProducer)
+	go c.ProcessResponse()
 
-	fmt.Printf("Listening on %s\n", httpURI)
+	log.Printf("Listening on %s\n", httpURI)
 	httpErr := http.ListenAndServe(httpURI, nil)
 	if httpErr != nil {
 		panic(httpErr)

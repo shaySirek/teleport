@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/Shopify/sarama"
@@ -33,6 +33,19 @@ type TeleportMessage struct {
 	Metadata6 string `json:"metadata6"`
 }
 
+// ProcessResponse grabs results and errors from a producer
+// asynchronously
+func (c *Controller) ProcessResponse() {
+	for {
+		select {
+		case result := <-c.kafkaProducer.Successes():
+			log.Printf("%v message: \"%s\" was sent to topic %s partition %d at offset %d\n", result.Timestamp.Format(""), result.Value, result.Topic, result.Partition, result.Offset)
+		case err := <-c.kafkaProducer.Errors():
+			log.Printf("%v Failed to produce message", err)
+		}
+	}
+}
+
 // Handler grabs a message http requests,
 // looks for topic's token in redis;
 // If token is valid, sends it to the kafka topic asynchronously.
@@ -49,22 +62,20 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		fmt.Printf("%s cannot be decoded\n", body)
+		log.Printf("%s cannot be decoded\n", body)
 		return
 	}
 
 	token, redisErr := c.redisClient.Get(msg.Topic).Result()
 	if redisErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Printf("%v", redisErr)
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("%v maybe topic %s does not exist (redis token is required)\n", redisErr, msg.Topic)
 		return
-	} else if redisErr == redis.Nil {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Printf("topic %s does not exist (redis token is required)\n", msg.Topic)
-		return
-	} else if token != msg.Token {
+	}
+
+	if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Printf("token \"%s\" is invalid for topic \"%s\"\n", msg.Token, msg.Topic)
+		log.Printf("token \"%s\" is invalid for topic \"%s\"\n", msg.Token, msg.Topic)
 		return
 	}
 
