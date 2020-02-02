@@ -34,7 +34,7 @@ func main() {
 	config.Producer.Return.Successes = true
 	config.Producer.Return.Errors = true
 
-	brokers := strings.Split(viper.Get(configKafkaBrokers).(string), configKafkaBrokersDelimiter)
+	brokers := strings.Split(viper.GetString(configKafkaBrokers), configKafkaBrokersDelimiter)
 
 	kafkaProducer, kafkaErr := sarama.NewAsyncProducer(brokers, config)
 	if kafkaErr != nil {
@@ -43,9 +43,9 @@ func main() {
 	defer kafkaProducer.AsyncClose()
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     viper.Get(configRedisServer).(string),
-		Password: viper.Get(configRedisPassword).(string),
-		DB:       viper.Get(configRedisDataBase).(int),
+		Addr:     viper.GetString(configRedisServer),
+		Password: viper.GetString(configRedisPassword),
+		DB:       viper.GetInt(configRedisDataBase),
 	})
 
 	pong, redisErr := redisClient.Ping().Result()
@@ -57,8 +57,8 @@ func main() {
 
 	c := Controller{kafkaProducer, redisClient}
 
-	httpURI := viper.Get(configHTTPURI).(string)
-	httpPath := viper.Get(configHTTPPath).(string)
+	httpURI := viper.GetString(configHTTPURI)
+	httpPath := viper.GetString(configHTTPPath)
 
 	http.HandleFunc(httpPath, c.Handler)
 
