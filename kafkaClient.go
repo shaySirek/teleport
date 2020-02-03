@@ -30,7 +30,7 @@ func getTLSConfig(clientcertfile, clientkeyfile, cacertfile string) (*tls.Config
 	tlsConfig.Certificates = []tls.Certificate{clientcert}
 	tlsConfig.BuildNameToCertificate()
 
-	return &tlsConfig, err
+	return &tlsConfig, nil
 }
 
 func getKafkaProducer(brokers []string, tlsEnabled bool, tlsClientCert string, tlsClientKey string, tlsCACert string) (sarama.AsyncProducer, error) {
