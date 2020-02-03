@@ -1,4 +1,8 @@
 export TELEPORT_KAFKA_BROKERS=localhost:9092
+export TELEPORT_KAFKA_TLS_ENABLED=true
+export TELEPORT_KAFKA_TLS_CLIENT_CERT=client.cer.pem
+export TELEPORT_KAFKA_TLS_CLIENT_KEY=client.key.pem
+export TELEPORT_KAFKA_TLS_CA_CERT=ca-cert
 export TELEPORT_HTTP_SERVER_URI=localhost:3333
 export TELEPORT_HTTP_SERVER_PATH=/receive
 export TELEPORT_REDIS_SERVER=localhost:6379
