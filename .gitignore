@@ -4,3 +4,9 @@ golang.org
 gopkg.in
 teleport-*
 vet.report
+*.p12
+*.pem
+ca-*
+cert*
+*.jks
+gen-ssl.sh

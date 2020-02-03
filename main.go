@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Shopify/sarama"
 	"github.com/go-redis/redis"
 	"github.com/spf13/viper"
 )
@@ -14,6 +13,10 @@ const (
 	configPrefix                = "teleport"
 	configKafkaBrokers          = "kafka_brokers"
 	configKafkaBrokersDelimiter = ","
+	configKafkaTLSEnabled       = "kafka_tls_enabled"
+	configKafkaTLSClientCert    = "kafka_tls_client_cert"
+	configKafkaTLSClientKey     = "kafka_tls_client_key"
+	configKafkaTLSCACert        = "kafka_tls_ca_cert"
 	configRedisServer           = "redis_server"
 	configRedisPassword         = "redis_password"
 	configRedisDataBase         = "redis_db"
@@ -30,13 +33,14 @@ func main() {
 	viper.AutomaticEnv()
 	viper.GetViper().AllowEmptyEnv(true)
 
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-	config.Producer.Return.Errors = true
+	kafkaProducer, kafkaErr := getKafkaProducer(
+		strings.Split(viper.GetString(configKafkaBrokers), configKafkaBrokersDelimiter),
+		viper.GetBool(configKafkaTLSEnabled),
+		viper.GetString(configKafkaTLSClientCert),
+		viper.GetString(configKafkaTLSClientKey),
+		viper.GetString(configKafkaTLSCACert),
+	)
 
-	brokers := strings.Split(viper.GetString(configKafkaBrokers), configKafkaBrokersDelimiter)
-
-	kafkaProducer, kafkaErr := sarama.NewAsyncProducer(brokers, config)
 	if kafkaErr != nil {
 		panic(kafkaErr)
 	}
@@ -47,8 +51,8 @@ func main() {
 		Password: viper.GetString(configRedisPassword),
 		DB:       viper.GetInt(configRedisDataBase),
 	})
-
 	pong, redisErr := redisClient.Ping().Result()
+
 	if redisErr != nil {
 		panic(redisErr)
 	}
