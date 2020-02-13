@@ -19,18 +19,8 @@ type Controller struct {
 
 // TeleportMessage represents http request body
 type TeleportMessage struct {
-	FileName  string `json:"file_name"`
-	Data      string `json:"data"`
-	User      string `json:"user"`
-	Index     string `json:"index"`
-	Parts     string `json:"parts"`
-	ID        string `json:"id"`
-	Topic     string `json:"metadata1"`
-	Token     string `json:"metadata2"`
-	Metadata3 string `json:"metadata3"`
-	Metadata4 string `json:"metadata4"`
-	Metadata5 string `json:"metadata5"`
-	Metadata6 string `json:"metadata6"`
+	Topic string `json:"metadata1"`
+	Token string `json:"metadata2"`
 }
 
 // ProcessResponse grabs results and errors from a producer
