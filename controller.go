@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/Shopify/sarama"
@@ -15,6 +15,7 @@ import (
 type Controller struct {
 	kafkaProducer sarama.AsyncProducer
 	redisClient   *redis.Client
+	logger        *logger
 }
 
 // TeleportMessage represents http request body
@@ -23,16 +24,41 @@ type TeleportMessage struct {
 	Token string `json:"metadata2"`
 }
 
+// KafkaMessage represents kafka message was produced into a kafka topic
+type KafkaMessage struct {
+	Timestamp int64
+	Key       string
+	Value     string
+	Topic     string
+	Partition int32
+	Offset    int64
+}
+
+// ErrorLog represents an error log
+type ErrorLog struct {
+	Description string
+	Message     string
+}
+
 // ProcessResponse grabs results and errors from a producer
 // asynchronously
 func (c *Controller) ProcessResponse() {
+
 	for {
 		select {
 		case result := <-c.kafkaProducer.Successes():
-			log.Printf("%v key: %s value: %s topic: %s partition: %d offset: %d\n",
-				result.Timestamp.Format(""), result.Key, result.Value, result.Topic, result.Partition, result.Offset)
+			key, kErr := result.Key.Encode()
+			value, vErr := result.Value.Encode()
+			if kErr != nil {
+				key = []byte{}
+			}
+			if vErr != nil {
+				value = []byte{}
+			}
+			c.logger.SendLog(logLevelInfo, componentKafka,
+				KafkaMessage{result.Timestamp.Unix(), string(key), string(value), result.Topic, result.Partition, result.Offset})
 		case err := <-c.kafkaProducer.Errors():
-			log.Printf("%v Failed to produce message", err)
+			c.logger.SendLog(logLevelError, componentKafka, ErrorLog{"Failed to produce message", err.Error()})
 		}
 	}
 }
@@ -46,6 +72,7 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if ioErr != nil {
 		http.Error(w, ioErr.Error(), http.StatusBadRequest)
+		c.logger.SendLog(logLevelError, componentDecoder, ErrorLog{"Request body cannot be read", ioErr.Error()})
 		return
 	}
 
@@ -53,20 +80,20 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Printf("%s cannot be decoded\n", body)
+		c.logger.SendLog(logLevelError, componentDecoder, ErrorLog{"Request body cannot be decoded", string(body)})
 		return
 	}
 
 	token, redisErr := c.redisClient.Get(msg.Topic).Result()
 	if redisErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("%v maybe topic %s does not exist (redis token is required)\n", redisErr, msg.Topic)
+		c.logger.SendLog(logLevelError, componentRedis, ErrorLog{fmt.Sprintf("topic %s does not exist in redis", msg.Topic), redisErr.Error()})
 		return
 	}
 
 	if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
-		log.Printf("token \"%s\" is invalid for topic \"%s\"\n", msg.Token, msg.Topic)
+		c.logger.SendLog(logLevelError, componentAuth, fmt.Sprintf("token %s is invalid for topic %s", msg.Token, msg.Topic))
 		return
 	}
 
