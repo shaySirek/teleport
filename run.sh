@@ -6,13 +6,7 @@ export TELEPORT_KAFKA_TLS_CA_CERT=ca-cert
 export TELEPORT_HTTP_SERVER_URI=localhost:3333
 export TELEPORT_HTTP_SERVER_PATH=/receive
 export TELEPORT_REDIS_SERVER=localhost:6379
-export TELEPORT_SPLUNK_URL=localhost
-export TELEPORT_SPLUNK_TOKEN=9edf303b-81d1-4f74-91ee-84739dad9e34
-export TELEPORT_SPLUNK_SOURCE=http:test
-export TELEPORT_SPLUNK_SOURCETYPE=httpevent
-export TELEPORT_SPLUNK_INDEX=main
-export TELEPORT_SPLUNK_TLS_INSECURE=true
-
+export TELEPORT_LOGDIR=/home/shaysirek/go/logs
 # export TELEPORT_REDIS_PASSWORD=
 # export TELEPORT_REDIS_DB=0
 ./teleport-linux-amd64

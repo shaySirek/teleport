@@ -15,29 +15,12 @@ import (
 type Controller struct {
 	kafkaProducer sarama.AsyncProducer
 	redisClient   *redis.Client
-	logger        *logger
 }
 
 // TeleportMessage represents http request body
 type TeleportMessage struct {
 	Topic string `json:"metadata1"`
 	Token string `json:"metadata2"`
-}
-
-// KafkaMessage represents kafka message was produced into a kafka topic
-type KafkaMessage struct {
-	Timestamp int64
-	Key       string
-	Value     string
-	Topic     string
-	Partition int32
-	Offset    int64
-}
-
-// ErrorLog represents an error log
-type ErrorLog struct {
-	Description string
-	Message     string
 }
 
 // ProcessResponse grabs results and errors from a producer
@@ -55,10 +38,10 @@ func (c *Controller) ProcessResponse() {
 			if vErr != nil {
 				value = []byte{}
 			}
-			c.logger.SendLog(logLevelInfo, componentKafka,
-				KafkaMessage{result.Timestamp.Unix(), string(key), string(value), result.Topic, result.Partition, result.Offset})
+			WriteLog(result.Topic, logLevelInfo, componentKafka,
+				KafkaMessage{string(key), string(value), result.Topic, result.Partition, result.Offset})
 		case err := <-c.kafkaProducer.Errors():
-			c.logger.SendLog(logLevelError, componentKafka, ErrorLog{"Failed to produce message", err.Error()})
+			WriteLog(logfileAdmin, logLevelError, componentKafka, ErrorLog{"Failed to produce message", err.Error()})
 		}
 	}
 }
@@ -72,7 +55,7 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if ioErr != nil {
 		http.Error(w, ioErr.Error(), http.StatusBadRequest)
-		c.logger.SendLog(logLevelError, componentDecoder, ErrorLog{"Request body cannot be read", ioErr.Error()})
+		WriteLog(logfileAdmin, logLevelError, componentDecoder, ErrorLog{"Request body cannot be read", ioErr.Error()})
 		return
 	}
 
@@ -80,20 +63,20 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		c.logger.SendLog(logLevelError, componentDecoder, ErrorLog{"Request body cannot be decoded", string(body)})
+		WriteLog(logfileAdmin, logLevelError, componentDecoder, ErrorLog{"Request body cannot be decoded", string(body)})
 		return
 	}
 
 	token, redisErr := c.redisClient.Get(msg.Topic).Result()
 	if redisErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		c.logger.SendLog(logLevelError, componentRedis, ErrorLog{fmt.Sprintf("topic %s does not exist in redis", msg.Topic), redisErr.Error()})
+		WriteLog(logfileAdmin, logLevelError, componentRedis, ErrorLog{fmt.Sprintf("topic %s does not exist in redis", msg.Topic), redisErr.Error()})
 		return
 	}
 
 	if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
-		c.logger.SendLog(logLevelError, componentAuth, fmt.Sprintf("token %s is invalid for topic %s", msg.Token, msg.Topic))
+		WriteLog(msg.Topic, logLevelError, componentAuth, fmt.Sprintf("token %s is invalid for topic %s", msg.Token, msg.Topic))
 		return
 	}
 

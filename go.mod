@@ -3,7 +3,7 @@ module github.com/bateleport
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20200131002437-cf55d5288a48
 	github.com/Shopify/sarama v1.26.0
-	github.com/ZachtimusPrime/Go-Splunk-HTTP v0.0.0-20190909123348-f5369e72b8af
+	github.com/ZachtimusPrime/Go-Splunk-HTTP v0.0.0-20190909123348-f5369e72b8af // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/frankban/quicktest v1.4.1
 	github.com/go-redis/redis v6.15.6+incompatible
