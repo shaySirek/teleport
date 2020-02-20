@@ -25,7 +25,7 @@ const (
 )
 
 type logEvent struct {
-	Timestamp string      `json:"timestamp"`
+	Time      string      `json:"time"`
 	Host      string      `json:"host"`
 	Loglevel  string      `json:"loglevel"`
 	Component string      `json:"component"`
