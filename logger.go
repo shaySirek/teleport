@@ -21,10 +21,11 @@ const (
 	componentDecoder = "Request Decoder"
 	componentAuth    = "Authentication"
 	logfileAdmin     = "admin"
+	timeFormat       = "2006-01-02 15:04:05.000"
 )
 
 type logEvent struct {
-	Timestamp int64       `json:"timestamp"`
+	Timestamp string      `json:"timestamp"`
 	Host      string      `json:"host"`
 	Loglevel  string      `json:"loglevel"`
 	Component string      `json:"component"`
@@ -53,7 +54,7 @@ func WriteLog(logfile string, loglevel string, component string, event interface
 		hostname = ""
 	}
 
-	logEventBytes, err := json.Marshal(logEvent{time.Now().Unix(), hostname, loglevel, component, event})
+	logEventBytes, err := json.Marshal(logEvent{time.Now().Format(timeFormat), hostname, loglevel, component, event})
 	if err != nil {
 		logEventBytes = []byte{}
 	}
