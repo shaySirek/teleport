@@ -8,3 +8,6 @@ compile:
 
 run:
 - run.sh
+
+offline:
+- go mod vendor
