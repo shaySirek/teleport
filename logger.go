@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -22,11 +23,8 @@ const (
 	logfileAdmin     = "admin"
 )
 
-var (
-	logdir = viper.GetString(configLogDir)
-)
-
 type logEvent struct {
+	Timestamp int64       `json:"timestamp"`
 	Host      string      `json:"host"`
 	Loglevel  string      `json:"loglevel"`
 	Component string      `json:"component"`
@@ -55,20 +53,22 @@ func WriteLog(logfile string, loglevel string, component string, event interface
 		hostname = ""
 	}
 
-	logEventBytes, err := json.Marshal(logEvent{hostname, loglevel, component, event})
+	logEventBytes, err := json.Marshal(logEvent{time.Now().Unix(), hostname, loglevel, component, event})
 	if err != nil {
 		logEventBytes = []byte{}
 	}
 	logEvent := string(logEventBytes)
 
-	f, err := os.OpenFile(fmt.Sprintf("%s.log", path.Join(logdir, logfile)), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("%s.log", path.Join(viper.GetString(configLogDir), logfile)),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
 	if err != nil {
 		log.Println(err.Error())
 		log.Println(logEvent)
 	}
 	defer f.Close()
 
-	logger := log.New(f, "", log.LstdFlags)
+	logger := log.New(f, "", 0)
 
 	logger.Println(logEvent)
 }
