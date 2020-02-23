@@ -1,13 +1,14 @@
-teleport is a http server handles requests and produces those into kafka topic.
+Teleport is a http server handles requests and produces those into different kafka topics.
 
-links:
+*links*:
 - https://ednsquare.com/story/how-to-create-async-producers-with-kafka-go-sarama------RQKdXV
 
-compile:
-- make
+*modules*:
+- online pre-white: go mod vendor
 
-run:
+*compile*:
+- online:   make
+- offline:  go build -mod vendor
+
+*run*:
 - run.sh
-
-offline:
-- go mod vendor

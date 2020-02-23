@@ -1,4 +1,4 @@
-module github.com/bateleport
+module github.com/shaySirek/teleport
 
 require (
 	code.cloudfoundry.org/bytefmt v0.0.0-20200131002437-cf55d5288a48
