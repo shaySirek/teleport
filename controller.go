@@ -10,25 +10,23 @@ import (
 	"github.com/go-redis/redis"
 )
 
-// Controller allows us to attach a kafka producer
-// to our handlers
+// Controller allows us to attach kafka producer and redis client to our HTTP handlers
 type Controller struct {
 	kafkaProducer sarama.AsyncProducer
 	redisClient   *redis.Client
 }
 
-// TeleportMessage represents http request body
+// TeleportMessage represents a HTTP request body
 type TeleportMessage struct {
 	Topic string `json:"metadata1"`
 	Token string `json:"metadata2"`
 }
 
-// ProcessResponse grabs results and errors from a producer
-// asynchronously
+// ProcessResponse grabs results and errors from kafka async producer
 func (c *Controller) ProcessResponse() {
-
 	for {
 		select {
+		// Produce was done successfully
 		case result := <-c.kafkaProducer.Successes():
 			key, kErr := result.Key.Encode()
 			value, vErr := result.Value.Encode()
@@ -40,16 +38,18 @@ func (c *Controller) ProcessResponse() {
 			}
 			WriteLog(result.Topic, logLevelInfo, componentKafka,
 				KafkaMessage{string(key), string(value), result.Topic, result.Partition, result.Offset})
+		// Produce was failed
 		case err := <-c.kafkaProducer.Errors():
 			WriteLog(logfileAdmin, logLevelError, componentKafka, ErrorLog{"Failed to produce message", err.Error()})
 		}
 	}
 }
 
-// Handler grabs a message http requests,
+// Handler grabs http requests,
 // looks for topic's token in redis;
-// If token is valid, sends it to the kafka topic asynchronously.
+// If token is valid, sends body into kafka topic asynchronously.
 func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
+	// Read http request body
 	body, ioErr := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
@@ -59,6 +59,7 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse body into TeleportMessage struct
 	var msg TeleportMessage
 
 	if err := json.Unmarshal(body, &msg); err != nil {
@@ -67,6 +68,7 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if topic exists in redis
 	token, redisErr := c.redisClient.Get(msg.Topic).Result()
 	if redisErr != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -74,16 +76,19 @@ func (c *Controller) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if topic's token is valid
 	if token != msg.Token {
 		w.WriteHeader(http.StatusForbidden)
 		WriteLog(msg.Topic, logLevelError, componentAuth, fmt.Sprintf("token %s is invalid for topic %s", msg.Token, msg.Topic))
 		return
 	}
 
+	// Produce body as message into kafka topic
 	c.kafkaProducer.Input() <- &sarama.ProducerMessage{
 		Topic: msg.Topic,
 		Key:   sarama.StringEncoder(msg.Topic),
 		Value: sarama.StringEncoder(body)}
 
+	// Write 200 OK HTTP response
 	w.WriteHeader(http.StatusOK)
 }

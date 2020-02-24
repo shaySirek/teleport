@@ -3,7 +3,7 @@
 ## General Flow
 - Client sends http request.
 - Server reads http request's body.
-- Server unmarshals body's json into struct:
+- Server parses body's json into struct:
     - metadata1 as Topic
     - metadata2 as Token
 - Server verifys topic's token with redis key-value store.
